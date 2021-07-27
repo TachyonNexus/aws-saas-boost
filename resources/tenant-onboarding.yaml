@@ -665,6 +665,7 @@ Resources:
           Memory: !If [WindowsOS, !Ref TaskMemory, !Ref 'AWS::NoValue']
           PortMappings:
             - ContainerPort: !Ref ContainerPort
+            - ContainerPort: 50051
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -752,6 +753,10 @@ Resources:
           IpProtocol: tcp
           FromPort: 443
           ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 50051
+          ToPort: 50051
   ECSSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -1082,6 +1087,46 @@ Resources:
           Value: lb_cookie
         - Key: stickiness.lb_cookie.duration_seconds
           Value: '86400'
+  ALBTargetGroupGrpc:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name:
+        Fn::Join: ['', ['tenant-', !Select [0, !Split ['-', !Ref TenantId ]], "-grpc"]]
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/AWS.ALB/healthcheck"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Port: 50051
+      Protocol: HTTP
+      ProtocolVersion: GRPC
+      TargetType: !If [ WindowsOS, instance, ip ]
+      VpcId: !Ref VPC
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '86400'
+  ALBListenerGrpc:
+    Condition: HasCertificate
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      DefaultActions:
+        - TargetGroupArn: !Ref ALBTargetGroupGrpc
+          Type: forward
+      Port: 50051
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn:
+            Fn::Join:
+              - ''
+              - - '{{resolve:ssm:'
+                - !Ref SSLCertArnParam
+                - '}}'
   ALBListenerSSL:
     Condition: HasCertificate
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -1197,6 +1242,10 @@ Resources:
             Fn::Join: ['', ['tenant-', !Select [0, !Split ['-', !Ref TenantId]]]]
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref ALBTargetGroup
+        - ContainerName:
+            Fn::Join: [ '', ['tenant-', !Select [0, !Split ['-', !Ref TenantId ]]]]
+          ContainerPort: 50051
+          TargetGroupArn: !Ref ALBTargetGroupGrpc
       CapacityProviderStrategy:
         !If
           - WindowsOS      
