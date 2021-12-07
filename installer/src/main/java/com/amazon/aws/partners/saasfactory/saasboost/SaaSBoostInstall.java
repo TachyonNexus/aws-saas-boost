@@ -1124,7 +1124,7 @@ public class SaaSBoostInstall {
 
         List<String> serviceRoles = new ArrayList<>(Arrays.asList("elasticloadbalancing.amazonaws.com",
                 "ecs.amazonaws.com", "ecs.application-autoscaling.amazonaws.com", "rds.amazonaws.com",
-                "fsx.amazonaws.com", "autoscaling.amazonaws.com")
+                "fsx.amazonaws.com", "autoscaling.amazonaws.com", "es.amazonaws.com")
         );
         for (String serviceRole : serviceRoles) {
             if (existingRoles.contains("/aws-service-role/" + serviceRole + "/")) {
