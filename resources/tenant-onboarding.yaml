@@ -332,7 +332,6 @@ Conditions:
   ProvisionEFS: !Equals [!Ref UseEFS, 'true']
   ProvisionRDS: !Equals [!Ref UseRDS, 'true']
   ProvisionES: !Equals [!Ref UseES, 'true']
-  ESEnforceHTTPS: !Equals [ !Ref "EnforceHTTPS", "true" ]
   WindowsOS: !Not [!Equals [!Ref DockerHostOS, 'LINUX']]
   HasCertificate: !Not [!Equals [!Ref SSLCertArnParam, '']]
   NoCertificate: !Not [Condition: HasCertificate]
@@ -1562,7 +1561,7 @@ Resources:
     Condition: ProvisionES
     Properties:
       TemplateURL: !Sub https://${SaaSBoostBucket}.s3.amazonaws.com/tenant-onboarding-es.yaml
-      TimeoutInMinutes: 45
+      TimeoutInMinutes: 30
       Parameters:
         CustomEndpointEnabled: !Ref CustomEndpointEnabled
         TenantId: !Ref TenantId
