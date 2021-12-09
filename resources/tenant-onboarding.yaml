@@ -117,6 +117,122 @@ Parameters:
       - AFTER_60_DAYS
       - AFTER_90_DAYS
     Default: NEVER
+  UseES:
+    Description: Deploy the Elasticsearch nested stack?
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'true'
+  ElasticsearchVersion:
+    Default: '7.10'
+    Type: String
+    ConstraintDescription: Must be an allowed AWS ES version (Major.Minor)
+    AllowedValues: ['7.10', '7.9', '7.8', '7.7', '7.4', '7.1', '6.8', '6.7', '6.5', '6.4', '6.3', '6.2', '6.0', '5.6', '5.5' ]
+  ElasticsearchMasterInstanceType:
+    Description: Instance type for master nodes.
+    Type: String
+    Default: t2.small.elasticsearch
+    AllowedValues:
+      - r5.large.elasticsearch
+      - r5.xlarge.elasticsearch
+      - r5.2xlarge.elasticsearch
+      - r5.4xlarge.elasticsearch
+      - r5.12xlarge.elasticsearch
+      - t2.small.elasticsearch
+      - t2.medium.elasticsearch
+      - c4.large.elasticsearch
+      - c4.xlarge.elasticsearch
+      - c4.2xlarge.elasticsearch
+      - c4.4xlarge.elasticsearch
+      - c4.8xlarge.elasticsearch
+      - i2.xlarge.elasticsearch
+      - i2.2xlarge.elasticsearch
+      - m4.large.elasticsearch
+      - m4.xlarge.elasticsearch
+      - m4.2xlarge.elasticsearch
+      - m4.4xlarge.elasticsearch
+      - m4.10xlarge.elasticsearch
+      - r4.large.elasticsearch
+      - r4.xlarge.elasticsearch
+      - r4.2xlarge.elasticsearch
+      - r4.4xlarge.elasticsearch
+      - r4.8xlarge.elasticsearch
+      - r4.16xlarge.elasticsearch
+      - m3.medium.elasticsearch
+      - m3.large.elasticsearch
+      - m3.xlarge.elasticsearch
+      - m3.2xlarge.elasticsearch
+      - r3.large.elasticsearch
+      - r3.xlarge.elasticsearch
+      - r3.2xlarge.elasticsearch
+      - r3.4xlarge.elasticsearch
+      - r3.8xlarge.elasticsearch
+  ElasticsearchDataInstanceType:
+    Description: Instance type for data nodes.
+    Type: String
+    Default: r5.2xlarge.elasticsearch
+    AllowedValues:
+      - r5.large.elasticsearch
+      - r5.xlarge.elasticsearch
+      - r5.2xlarge.elasticsearch
+      - r5.4xlarge.elasticsearch
+      - r5.12xlarge.elasticsearch
+      - t2.small.elasticsearch
+      - t2.medium.elasticsearch
+      - c4.large.elasticsearch
+      - c4.xlarge.elasticsearch
+      - c4.2xlarge.elasticsearch
+      - c4.4xlarge.elasticsearch
+      - c4.8xlarge.elasticsearch
+      - i2.xlarge.elasticsearch
+      - i2.2xlarge.elasticsearch
+      - m4.large.elasticsearch
+      - m4.xlarge.elasticsearch
+      - m4.2xlarge.elasticsearch
+      - m4.4xlarge.elasticsearch
+      - m4.10xlarge.elasticsearch
+      - r4.large.elasticsearch
+      - r4.xlarge.elasticsearch
+      - r4.2xlarge.elasticsearch
+      - r4.4xlarge.elasticsearch
+      - r4.8xlarge.elasticsearch
+      - r4.16xlarge.elasticsearch
+      - m3.medium.elasticsearch
+      - m3.large.elasticsearch
+      - m3.xlarge.elasticsearch
+      - m3.2xlarge.elasticsearch
+      - r3.large.elasticsearch
+      - r3.xlarge.elasticsearch
+      - r3.2xlarge.elasticsearch
+      - r3.4xlarge.elasticsearch
+      - r3.8xlarge.elasticsearch
+  NumberOfMasterNodes:
+    Description: How many dedicated master nodes you want to have. 3 is recommended.
+    Type: Number
+    Default: 3
+    AllowedValues:
+      - 3
+      - 5
+  NumberOfDataNodes:
+    Description: How many data nodes you want to have. Multiples of your number of availability zones (2) is recommended.
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 20
+  CustomEndpointEnabled:
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'true'
+  EnforceHTTPS:
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'true'
+  ESPortHTTP:
+    Type: String
+    Default: '80'
+  ESPortHTTPS:
+    Type: String
+    Default: '443'
+  # RDS config
   UseRDS:
     Description: Deploy the RDS nested stack?
     Type: String
@@ -215,6 +331,7 @@ Conditions:
   HasDomainName: !Not [!Equals [!Ref DomainName, '']]
   ProvisionEFS: !Equals [!Ref UseEFS, 'true']
   ProvisionRDS: !Equals [!Ref UseRDS, 'true']
+  ProvisionES: !Equals [!Ref UseES, 'true']
   WindowsOS: !Not [!Equals [!Ref DockerHostOS, 'LINUX']]
   HasCertificate: !Not [!Equals [!Ref SSLCertArnParam, '']]
   NoCertificate: !Not [Condition: HasCertificate]
@@ -587,6 +704,11 @@ Resources:
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/DB_HOST
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/DB_NAME
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/METRICS_STREAM
+                  # Makes more sense to add parameter to tenant rather than in saas boost environment 
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_NAME
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_ENDPOINT
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_PORT
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_PORT_DEFAULT
               - Effect: Allow
                 Action:
                   - fsx:DescribeFileSystems
@@ -692,8 +814,24 @@ Resources:
                   Value: !GetAtt rds.Outputs.RdsEndpoint
                 - Name: DB_NAME
                   Value: !Ref RDSDatabase
+                - Name: ES_CLUSTER_ENDPOINT
+                  Value: !GetAtt es.Outputs.ESDomainEndpoint
+                - Name: ES_CLUSTER_PORT
+                  Value: !GetAtt es.Outputs.ESClusterPort
+                - Name: ES_USERNAME
+                  Value: !GetAtt es.Outputs.ESUsername
+                - Name: ES_PASSWORD
+                  Value: !GetAtt es.Outputs.ESPassword
               - - Name: SAAS_BOOST_BUCKET
                   Value: !Ref SaaSBoostBucket
+                - Name: ES_CLUSTER_ENDPOINT
+                  Value: !GetAtt es.Outputs.ESDomainEndpoint
+                - Name: ES_CLUSTER_PORT
+                  Value: !GetAtt es.Outputs.ESClusterPort
+                - Name: ES_USERNAME
+                  Value: !GetAtt es.Outputs.ESUsername
+                - Name: ES_PASSWORD
+                  Value: !GetAtt es.Outputs.ESPassword
           MountPoints:
             !If
               - ProvisionEFS
@@ -772,7 +910,7 @@ Resources:
       Scheme: internet-facing
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
-          Value: '30'
+          Value: '4000' # set to max time to prevent gRPC channels from closing
         - Key: access_logs.s3.enabled
           Value: 'true'
         - Key: access_logs.s3.bucket
@@ -1417,6 +1555,29 @@ Resources:
         ECSSecurityGroup: !Ref ECSSecurityGroup
         EncryptEFS: !Ref EncryptEFS
         EFSLifecyclePolicy: !Ref EFSLifecyclePolicy
+  # ElasticSearch Extension
+  es:
+    Type: AWS::CloudFormation::Stack
+    Condition: ProvisionES
+    Properties:
+      TemplateURL: !Sub https://${SaaSBoostBucket}.s3.amazonaws.com/tenant-onboarding-es.yaml
+      TimeoutInMinutes: 30
+      Parameters:
+        CustomEndpointEnabled: !Ref CustomEndpointEnabled
+        TenantId: !Ref TenantId
+        TenantSubDomain: !Ref TenantSubDomain
+        DomainName: !Ref DomainName
+        ElasticsearchVersion: !Ref ElasticsearchVersion
+        ECSSecurityGroup: !Ref ECSSecurityGroup
+        ElasticsearchDataInstanceType: !Ref ElasticsearchDataInstanceType
+        NumberOfDataNodes: !Ref NumberOfDataNodes
+        EnforceHTTPS: !Ref EnforceHTTPS
+        ElasticsearchName:
+          Fn::Join: ['', ['tenant-', !Select [0, !Split ['-', !Ref TenantId]], '-es-cluster']]
+        Username:
+          !Join ['', ['esuser', !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
+        Password:
+          !Join ['-', ['E0', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
   rds:
     Type: AWS::CloudFormation::Stack
     Condition: ProvisionRDS
