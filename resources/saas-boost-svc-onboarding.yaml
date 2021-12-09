@@ -568,6 +568,15 @@ Resources:
                   - ec2:AuthorizeSecurityGroupEgress
                 Resource:
                   - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+              # Elasticsearch onboarding policy
+              - Effect: Allow
+                Action:
+                  - es:AddTags
+                  - es:CreateElasticsearchDomain
+                  - es:DescribeElasticsearchDomain
+                  - es:CreateElasticsearchServiceRole
+                Resource:
+                  - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/tenant-*
               # This is for the AD stack -- need to figure out why update DNS wants to delete the directory
               - Effect: Allow
                 Action:
@@ -887,6 +896,15 @@ Resources:
                   - ec2:RevokeSecurityGroupEgress
                 Resource:
                   - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+              # Elasticsearch onboarding delete policy
+              - Effect: Allow
+                Action:
+                  - es:DeleteElasticsearchDomain
+                  - es:DeleteElasticsearchServiceRole
+                  - es:DescribeElasticsearchDomain
+                  - es:RemoveTags
+                Resource:
+                  - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/tenant-*
   OnboardingServiceGetAllLogs:
     Type: AWS::Logs::LogGroup
     Properties:
