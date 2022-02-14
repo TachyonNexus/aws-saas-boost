@@ -64,7 +64,7 @@ Parameters:
   ElasticsearchDataInstanceType:
     Description: Instance type for data nodes.
     Type: String
-    Default: 'r5.2xlarge.elasticsearch'
+    Default: 't3.medium.elasticsearch'
   NumberOfMasterNodes:
     Description: How many dedicated master nodes you want to have. 3 is recommended.
     Type: Number
@@ -104,7 +104,7 @@ Resources:
         EBSEnabled: !Ref EBSEnabled
         Iops: 0
         VolumeSize: !Ref EBSVolumeSize
-        VolumeType: standard
+        VolumeType: gp2
       ElasticsearchClusterConfig:
         InstanceCount: !Ref NumberOfDataNodes
         InstanceType: !Ref ElasticsearchDataInstanceType
