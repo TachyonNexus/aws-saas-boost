@@ -706,10 +706,10 @@ Resources:
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/DB_NAME
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/METRICS_STREAM
                   # Makes more sense to add parameter to tenant rather than in saas boost environment 
-                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_NAME
-                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_ENDPOINT
-                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_PORT
-                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_CLUSTER_PORT_DEFAULT
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_NAME
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_ENDPOINT
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_PORT
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/saas-boost/${Environment}/tenant/${TenantId}/ES_PORT_DEFAULT
               - Effect: Allow
                 Action:
                   - fsx:DescribeFileSystems
@@ -815,9 +815,9 @@ Resources:
                   Value: !GetAtt rds.Outputs.RdsEndpoint
                 - Name: DB_NAME
                   Value: !Ref RDSDatabase
-                - Name: ES_CLUSTER_ENDPOINT
+                - Name: ES_ENDPOINT
                   Value: !GetAtt es.Outputs.ESDomainEndpoint
-                - Name: ES_CLUSTER_PORT
+                - Name: ES_PORT
                   Value: !GetAtt es.Outputs.ESClusterPort
                 - Name: ES_USERNAME
                   Value: !GetAtt es.Outputs.ESUsername
@@ -825,9 +825,9 @@ Resources:
                   Value: !GetAtt es.Outputs.ESPassword
               - - Name: SAAS_BOOST_BUCKET
                   Value: !Ref SaaSBoostBucket
-                - Name: ES_CLUSTER_ENDPOINT
+                - Name: ES_ENDPOINT
                   Value: !GetAtt es.Outputs.ESDomainEndpoint
-                - Name: ES_CLUSTER_PORT
+                - Name: ES_PORT
                   Value: !GetAtt es.Outputs.ESClusterPort
                 - Name: ES_USERNAME
                   Value: !GetAtt es.Outputs.ESUsername
