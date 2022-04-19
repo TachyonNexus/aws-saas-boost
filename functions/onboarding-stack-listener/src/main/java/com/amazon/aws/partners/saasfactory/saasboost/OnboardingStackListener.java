@@ -215,6 +215,14 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
                                                     // Same URL as the load balancer
                                                     "consoleUrl", AwsResource.LOAD_BALANCER.formatUrl(AWS_REGION, "sb-" + SAAS_BOOST_ENV + "-tenant-" + tenantId.split("-")[0]))
                                             );
+                                        } else if ("GrpcListener".equals(logicalId)) {
+                                            LOGGER.info("Saving gRPC listener {} {}", logicalId, physicalResourceId);
+                                            tenantResources.put(AwsResource.GRPC_LISTENER.name(), Map.of(
+                                                    "name", physicalResourceId,
+                                                    "arn", physicalResourceId,
+                                                    // Same URL as the load balancer
+                                                    "consoleUrl", AwsResource.LOAD_BALANCER.formatUrl(AWS_REGION, "sb-" + SAAS_BOOST_ENV + "-tenant-" + tenantId.split("-")[0]))
+                                            );
                                         }
                                     } else if ("AWS::Logs::LogGroup".equals(resourceType)) {
                                         //need to replace / with $252F for the url path

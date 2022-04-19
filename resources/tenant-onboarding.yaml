@@ -235,6 +235,10 @@ Resources:
           IpProtocol: tcp
           FromPort: 443
           ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 50051
+          ToPort: 50051
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -299,6 +303,27 @@ Resources:
       VpcId: !Ref VPC
       Port: 80
       Protocol: HTTP
+  DefaultTargetGroupGrpc:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name:
+        Fn::Join: ['', ['sb-', !Ref Environment, '-tenant-', !Select [0, !Split ['-', !Ref TenantId]], "-grpc"]]
+      VpcId: !Ref VPC
+      Port: 50051
+      Protocol: HTTP
+      ProtocolVersion: GRPC
+  GrpcListener:
+    Condition: HasCertificate
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      DefaultActions:
+        - TargetGroupArn: !Ref DefaultTargetGroupGrpc
+          Type: forward
+      Port: 50051
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref SSLCertificateArn
   HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: NoCertificate

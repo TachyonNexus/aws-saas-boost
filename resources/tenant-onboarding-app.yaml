@@ -68,6 +68,9 @@ Parameters:
   ECSLoadBalancerHttpsListener:
     Description: The ARN of the ALB listener for HTTPS traffic
     Type: String
+  ECSLoadBalancerGrpcListener:
+    Description: The ARN of the ALB listener for gRPC traffic
+    Type: String
   ECSSecurityGroup:
     Description: Source security group to grant access to the container cluster
     Type: String
@@ -232,6 +235,7 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
 Conditions:
+  IsHub: !Equals [!Ref ServiceName, 'hub']
   IsPublic: !Equals [!Ref PubliclyAddressable, 'true']
   IsPrivate: !Not [Condition: IsPublic]
   HasHttpsListener: !Not [!Equals [!Ref ECSLoadBalancerHttpsListener, '']]
@@ -450,6 +454,7 @@ Resources:
           Memory: !If [Ec2LaunchType, !Ref TaskMemory, !Ref 'AWS::NoValue']
           PortMappings:
             - ContainerPort: !Ref ContainerPort
+            - ContainerPort: 50051
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -943,6 +948,36 @@ Resources:
             Fn::Join: ['', ['sb-', !Ref Environment, '-tenant-', !Select [0, !Split ['-', !Ref TenantId]], '-', !Ref ServiceResourceName]]
         - Key: Tenant
           Value: !Ref TenantId
+  ALBTargetGroupGrpc:
+    Condition: IsHub
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/AWS.ALB/healthcheck"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Port: 50051
+      Protocol: HTTP
+      ProtocolVersion: GRPC
+      TargetType: !If [ WindowsOS, instance, ip ]
+      VpcId: !Ref VPC
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '86400'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Name
+          Value:
+            Fn::Join: ['', ['sb-', !Ref Environment, '-tenant-', !Select [ 0, !Split [ '-', !Ref TenantId ]], '-', !Ref ServiceResourceName, '-grpc']]
+        - Key: Tenant
+          Value: !Ref TenantId
   ALBRule:
     Condition: IsPublic
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
@@ -982,6 +1017,26 @@ Resources:
           Values:
             - !Ref PublicPathRoute
       ListenerArn: !Ref ECSLoadBalancerHttpsListener
+      Priority: !Ref PublicPathRulePriority
+  ALBGrpcRule:
+    Condition: IsHub
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: !If [ DisableAccess, fixed-response, forward ]
+          TargetGroupArn: !If [DisableAccess, !Ref 'AWS::NoValue', !Ref ALBTargetGroupGrpc]
+          FixedResponseConfig:
+            !If
+            - DisableAccess
+            - ContentType: text/html
+              StatusCode: 200
+              MessageBody: <html><body>Access to this application is disabled. Contact support if you have questions.</body></html>
+            - !Ref 'AWS::NoValue'
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - !Ref PublicPathRoute
+      ListenerArn: !Ref ECSLoadBalancerGrpcListener
       Priority: !Ref PublicPathRulePriority
   ServiceDiscoveryNamespace:
       Type: AWS::ServiceDiscovery::PrivateDnsNamespace
@@ -1035,6 +1090,14 @@ Resources:
                 Fn::Join: ['', ['sb-', !Ref Environment, '-tenant-', !Select [0, !Split ['-', !Ref TenantId]], '-', !Ref ServiceResourceName]]
               ContainerPort: !Ref ContainerPort
               TargetGroupArn: !Ref ALBTargetGroup
+            -
+              !If
+                - IsHub
+                - ContainerName:
+                    Fn::Join: ['', ['sb-', !Ref Environment, '-tenant-', !Select [0, !Split ['-', !Ref TenantId]], '-', !Ref ServiceResourceName]]
+                  ContainerPort: 50051
+                  TargetGroupArn: !If [IsHub, !Ref ALBTargetGroupGrpc, !Ref 'AWS::NoValue']
+                - !Ref 'AWS::NoValue'
           - !Ref 'AWS::NoValue'
       CapacityProviderStrategy:
         !If

@@ -472,7 +472,7 @@ public class OnboardingService {
                 String tenantId = (String) insertedTenant.get("id");
                 onboarding.setTenantId(UUID.fromString(tenantId));
                 onboarding = dal.updateOnboarding(onboarding);
-    
+
                 // Assign a CIDR block to this tenant to use for its VPC
                 try {
                     dal.assignCidrBlock(tenantId);
@@ -749,6 +749,7 @@ public class OnboardingService {
                     String loadBalancerArn;
                     String httpListenerArn;
                     String httpsListenerArn; // might not have an HTTPS listener if they don't have an SSL certificate
+                    String grpcListenerArn = ""; // might not have an HTTPS listener if they don't have an SSL certificate
                     String ecsCluster;
                     Map<String, Map<String, String>> tenantResources = (Map<String, Map<String, String>>) tenant.get("resources");
                     try {
@@ -769,6 +770,7 @@ public class OnboardingService {
                         } else {
                             httpsListenerArn = "";
                         }
+                        grpcListenerArn = Objects.toString(tenantResources.get("GRPC_LISTENER").get("arn"), "");
                         if (Utils.isBlank(vpc) || Utils.isBlank(privateSubnetA) || Utils.isBlank(privateSubnetB)
                                 || Utils.isBlank(ecsCluster) || Utils.isBlank(ecsSecurityGroup)
                                 || Utils.isBlank(loadBalancerArn)
@@ -918,6 +920,7 @@ public class OnboardingService {
                         templateParameters.add(Parameter.builder().parameterKey("ECSLoadBalancer").parameterValue(loadBalancerArn).build());
                         templateParameters.add(Parameter.builder().parameterKey("ECSLoadBalancerHttpListener").parameterValue(httpListenerArn).build());
                         templateParameters.add(Parameter.builder().parameterKey("ECSLoadBalancerHttpsListener").parameterValue(httpsListenerArn).build());
+                        templateParameters.add(Parameter.builder().parameterKey("ECSLoadBalancerGrpcListener").parameterValue(grpcListenerArn).build());
                         templateParameters.add(Parameter.builder().parameterKey("ECSSecurityGroup").parameterValue(ecsSecurityGroup).build());
                         templateParameters.add(Parameter.builder().parameterKey("ContainerOS").parameterValue(clusterOS).build());
                         templateParameters.add(Parameter.builder().parameterKey("ClusterInstanceType").parameterValue(clusterInstanceType).build());
