@@ -751,8 +751,21 @@ public class OnboardingService {
                     String httpsListenerArn; // might not have an HTTPS listener if they don't have an SSL certificate
                     String grpcListenerArn = ""; // might not have an HTTPS listener if they don't have an SSL certificate
                     String ecsCluster;
+                    String esEndpoint;
+                    String esPort;
+                    String esUsername;
+                    String esPassword;
+                    String domainName;
+                    String tenantSubdomain;
+                    Map<String, String> attributes = (Map<String, String>) tenant.get("attributes");
                     Map<String, Map<String, String>> tenantResources = (Map<String, Map<String, String>>) tenant.get("resources");
                     try {
+                        esEndpoint = attributes.get("endpoint");
+                        esPort = attributes.get("port");
+                        esUsername = attributes.get("username");
+                        esPassword = attributes.get("password");
+                        domainName = (String) appConfig.get("domainName");
+                        tenantSubdomain = (String) tenant.get("subdomain");
                         vpc = tenantResources.get("VPC").get("name");
                         privateSubnetA = tenantResources.get("PRIVATE_SUBNET_A").get("name");
                         privateSubnetB = tenantResources.get("PRIVATE_SUBNET_B").get("name");
@@ -905,6 +918,8 @@ public class OnboardingService {
 
                         List<Parameter> templateParameters = new ArrayList<>();
                         templateParameters.add(Parameter.builder().parameterKey("Environment").parameterValue(SAAS_BOOST_ENV).build());
+                        templateParameters.add(Parameter.builder().parameterKey("DomainName").parameterValue(domainName).build());
+                        templateParameters.add(Parameter.builder().parameterKey("TenantSubDomain").parameterValue(tenantSubdomain).build());
                         templateParameters.add(Parameter.builder().parameterKey("TenantId").parameterValue(tenantId).build());
                         templateParameters.add(Parameter.builder().parameterKey("ServiceName").parameterValue(serviceName).build());
                         templateParameters.add(Parameter.builder().parameterKey("ServiceResourceName").parameterValue(serviceResourceName).build());
@@ -952,6 +967,10 @@ public class OnboardingService {
                         templateParameters.add(Parameter.builder().parameterKey("RDSPort").parameterValue(dbPort.toString()).build());
                         templateParameters.add(Parameter.builder().parameterKey("RDSDatabase").parameterValue(dbDatabase).build());
                         templateParameters.add(Parameter.builder().parameterKey("RDSBootstrap").parameterValue(dbBootstrap).build());
+                        templateParameters.add(Parameter.builder().parameterKey("ESEndpoint").parameterValue(esEndpoint).build());
+                        templateParameters.add(Parameter.builder().parameterKey("ESPort").parameterValue(esPort).build());
+                        templateParameters.add(Parameter.builder().parameterKey("ESUsername").parameterValue(esUsername).build());
+                        templateParameters.add(Parameter.builder().parameterKey("ESPassword").parameterValue(esPassword).build());
                         // TODO rework these last 2?
                         templateParameters.add(Parameter.builder().parameterKey("MetricsStream").parameterValue("").build());
                         templateParameters.add(Parameter.builder().parameterKey("EventBus").parameterValue(SAAS_BOOST_EVENT_BUS).build());

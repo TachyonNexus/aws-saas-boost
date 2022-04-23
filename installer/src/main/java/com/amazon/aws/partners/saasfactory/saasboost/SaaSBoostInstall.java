@@ -1130,7 +1130,7 @@ public class SaaSBoostInstall {
         aws iam get-role --role-name "AWSServiceRoleForApplicationAutoScaling_ECSService" || aws iam create-service-linked-role --aws-service-name "ecs.application-autoscaling.amazonaws.com"
         aws iam get-role --role-name "AWSServiceRoleForRDS" || aws iam create-service-linked-role --aws-service-name "rds.amazonaws.com"
         aws iam get-role --role-name "AWSServiceRoleForAmazonFsx" || aws iam create-service-linked-role --aws-service-name "fsx.amazonaws.com"
-        aws iam get-role --role-name "AWSServiceRoleForAutoScaling" || aws iam create-service-linked-role --aws-service-name "autoscaling.amazonaws.com"        
+        aws iam get-role --role-name "AWSServiceRoleForAutoScaling" || aws iam create-service-linked-role --aws-service-name "autoscaling.amazonaws.com"
         */
 
         Set<String> existingRoles = new HashSet<>();
@@ -1141,7 +1141,7 @@ public class SaaSBoostInstall {
 
         List<String> serviceRoles = new ArrayList<>(Arrays.asList("elasticloadbalancing.amazonaws.com",
                 "ecs.amazonaws.com", "ecs.application-autoscaling.amazonaws.com", "rds.amazonaws.com",
-                "fsx.amazonaws.com", "autoscaling.amazonaws.com")
+                "fsx.amazonaws.com", "autoscaling.amazonaws.com", "es.amazonaws.com")
         );
         for (String serviceRole : serviceRoles) {
             if (existingRoles.contains("/aws-service-role/" + serviceRole + "/")) {

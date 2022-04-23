@@ -41,13 +41,53 @@ Parameters:
     Description: The tier this tenant is onboading into
     Type: String
     Default: ''
+  ElasticsearchVersion:
+    Default: '7.10'
+    Type: String
+    ConstraintDescription: Must be an allowed AWS ES version (Major.Minor)
+    AllowedValues: [ '7.10', '7.9', '7.8', '7.7', '7.4', '7.1', '6.8', '6.7', '6.5', '6.4', '6.3', '6.2', '6.0', '5.6', '5.5' ]
+  ElasticsearchMasterInstanceType:
+    Description: Instance type for master nodes.
+    Type: String
+    Default: t2.small.elasticsearch
+  ElasticsearchDataInstanceType:
+    Description: Instance type for data nodes.
+    Type: String
+    Default: t3.medium.elasticsearch
+  NumberOfMasterNodes:
+    Description: How many dedicated master nodes you want to have. 3 is recommended.
+    Type: Number
+    Default: 3
+    AllowedValues:
+      - 3
+      - 5
+  NumberOfDataNodes:
+    Description: How many data nodes you want to have. Multiples of your number of availability zones (2) is recommended.
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 20
+  CustomEndpointEnabled:
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'true'
+  EnforceHTTPS:
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'true'
+  ESPortHTTP:
+    Type: String
+    Default: '80'
+  ESPortHTTPS:
+    Type: String
+    Default: '443'
 Conditions:
   HasDomainName: !Not [!Equals [!Ref DomainName, '']]
   HasHostedZone: !Not [!Equals [!Ref HostedZoneId, '']]
   HasSubDomainName: !Not [!Equals [!Ref TenantSubDomain, '']]
   HasCertificate: !Not [!Equals [!Ref SSLCertificateArn, '']]
   NoCertificate: !Equals [!Ref SSLCertificateArn, '']
-  CreateSubDomainAlias: !And 
+  CreateSubDomainAlias: !And
     - !Condition HasDomainName
     - !Condition HasHostedZone
     - !Condition HasSubDomainName
@@ -362,6 +402,28 @@ Resources:
             Path: '/#{path}'
             Query: '#{query}'
             StatusCode: HTTP_301
+  # ElasticSearch Extension
+  es:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://{{resolve:ssm:/saas-boost/${Environment}/SAAS_BOOST_BUCKET}}.s3.amazonaws.com/tenant-onboarding-es.yaml'
+      TimeoutInMinutes: 30
+      Parameters:
+        CustomEndpointEnabled: !Ref CustomEndpointEnabled
+        TenantId: !Ref TenantId
+        TenantSubDomain: !Ref TenantSubDomain
+        DomainName: !Ref DomainName
+        ElasticsearchVersion: !Ref ElasticsearchVersion
+        ECSSecurityGroup: !Ref ECSSecurityGroup
+        ElasticsearchDataInstanceType: !Ref ElasticsearchDataInstanceType
+        NumberOfDataNodes: !Ref NumberOfDataNodes
+        EnforceHTTPS: !Ref EnforceHTTPS
+        ElasticsearchName:
+          Fn::Join: ['', [!Sub 'sb-${Environment}-', !Ref TenantSubDomain, '-es' ]]
+        Username:
+          !Join ['', ['esuser', !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
+        Password:
+          !Join ['-', ['E0', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
   # Onboarding service is responsible for invoking create stack for as many
   # services as this application has
 Outputs:
@@ -371,4 +433,8 @@ Outputs:
   DNSName:
     Description: DNSName for this tenant's application load balancer
     Value: !GetAtt ApplicationLoadBalancer.DNSName
+  ESConnection:
+    Description: 'Elasticsearch credentials and host in the format <username>:<port>@<endpoint>:<port>'
+    Value:
+      Fn::Join: ['', [!GetAtt es.Outputs.ESUsername, ':', !GetAtt es.Outputs.ESPassword, '@', !GetAtt es.Outputs.ESDomainEndpoint, ':', !GetAtt es.Outputs.ESClusterPort]]
 ...

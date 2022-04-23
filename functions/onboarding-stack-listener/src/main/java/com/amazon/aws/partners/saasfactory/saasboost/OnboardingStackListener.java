@@ -89,6 +89,7 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
             String domainName = null;
             String hostedZone = null;
             String subdomain = null;
+            Map<String, String> attributes = new HashMap<>();
             try {
                 DescribeStacksResponse stacks = cfn.describeStacks(req -> req
                         .stackName(stackId)
@@ -106,6 +107,23 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
                     }
                     if ("TenantSubDomain".equals(parameter.parameterKey())) {
                         subdomain = parameter.parameterValue();
+                    }
+                }
+
+                if (stack.hasOutputs()) {
+                    for (Output output : stack.outputs()) {
+                        if ("ESConnection".equals(output.outputKey())) {
+                            // "<username>:<password>@<endpoint>:<port>
+                            String[] esParts = output.outputValue().split("[:@]");
+                            if (esParts.length != 4) {
+                                throw new RuntimeException("ES_CONNECTION was expected to have 4 parts");
+                            }
+                            attributes.put("username", esParts[0]);
+                            attributes.put("password", esParts[1]);
+                            attributes.put("endpoint", esParts[2]);
+                            attributes.put("port", esParts[3]);
+                            break;
+                        }
                     }
                 }
 
@@ -248,7 +266,8 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
                 LOGGER.info("Updating tenant resources AWS console links");
                 Utils.publishEvent(eventBridge, SAAS_BOOST_EVENT_BUS, EVENT_SOURCE,
                         "Tenant Resources Changed",
-                        Map.of("tenantId", tenantId, "resources", Utils.toJson(tenantResources))
+                        Map.of("tenantId", tenantId, "resources", Utils.toJson(tenantResources),
+                                "attributes", Utils.toJson(attributes))
                 );
 
 //                // If there's a billing plan for this tenant, publish the event so they get
@@ -279,6 +298,7 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
     protected static boolean filter(CloudFormationEvent cloudFormationEvent) {
         return ("AWS::CloudFormation::Stack".equals(cloudFormationEvent.getResourceType())
                 && STACK_NAME_PATTERN.matcher(cloudFormationEvent.getStackName()).matches()
+                && STACK_NAME_PATTERN.matcher(cloudFormationEvent.getLogicalResourceId()).matches()
                 && EVENTS_OF_INTEREST.contains(cloudFormationEvent.getResourceStatus()));
     }
 

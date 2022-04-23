@@ -368,6 +368,12 @@ public class TenantService implements RequestHandler<Map<String, Object>, APIGat
             String tenantId = (String) detail.get("tenantId");
             Tenant tenant = dal.getTenant(tenantId);
             if (tenant != null) {
+                if (detail.get("attributes") != null) {
+                    Map<String, String> tenantAttributes = tenant.getAttributes();
+                    Map<String, String> attributes = Utils.fromJson((String) detail.get("attributes"), LinkedHashMap.class);
+                    tenantAttributes.putAll(attributes);
+                    tenant.setAttributes(tenantAttributes);
+                }
                 Map<String, Tenant.Resource> updatedResources = fromTenantResourcesChangedEvent(event);
                 if (updatedResources != null) {
                     Map<String, Tenant.Resource> tenantResources = tenant.getResources();

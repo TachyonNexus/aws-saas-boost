@@ -18,8 +18,14 @@ Parameters:
   Environment:
     Description: Environment (test, uat, prod, etc.)
     Type: String
+  DomainName:
+    Description: The hosted zone domain name
+    Type: String
   TenantId:
     Description: The GUID for the tenant
+    Type: String
+  TenantSubDomain:
+    Description: The subdomain for this tenant
     Type: String
   ServiceName:
     Description: Name for this application service
@@ -234,6 +240,18 @@ Parameters:
   AMZNLINUX2:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+  ESEndpoint:
+    Description: The endpoint to connect to Elasticsearch
+    Type: String
+  ESPort:
+    Description: The TCP port to connect to Elasticsearch
+    Type: String
+  ESUsername:
+    Description: The master username for Elasticsearch # todo(jason): make more secure
+    Type: String
+  ESPassword:
+    Description: The master password for Elasticsearch # todo(jason): make more secure
+    Type: String
 Conditions:
   IsHub: !Equals [!Ref ServiceName, 'hub']
   IsPublic: !Equals [!Ref PubliclyAddressable, 'true']
@@ -484,6 +502,17 @@ Resources:
                   Value: !Ref RDSDatabase
                 - Name: DB_USER
                   Value: !Ref RDSUsername
+                - Name: ES_ENDPOINT
+                  Value: !Ref ESEndpoint
+                - Name: ES_PORT
+                  Value: !Ref ESPort
+                - Name: ES_USERNAME
+                  Value: !Ref ESUsername
+                - Name: ES_PASSWORD
+                  Value: !Ref ESPassword
+                - Name: TENANT_DOMAIN_NAME
+                  Value:
+                    Fn::Join: ['', [!Ref TenantSubDomain, '.', !Ref DomainName]]
               - - Name: AWS_REGION
                   Value: !Ref AWS::Region
                 - Name: SAAS_BOOST_ENV
@@ -496,6 +525,17 @@ Resources:
                   Value: !Ref EventBus
                 - Name: METRICS_STREAM
                   Value: !Ref MetricsStream
+                - Name: ES_ENDPOINT
+                  Value: !Ref ESEndpoint
+                - Name: ES_PORT
+                  Value: !Ref ESPort
+                - Name: ES_USERNAME
+                  Value: !Ref ESUsername
+                - Name: ES_PASSWORD
+                  Value: !Ref ESPassword
+                - Name: TENANT_DOMAIN_NAME
+                  Value:
+                    Fn::Join: [ '', [ !Ref TenantSubDomain, '.', !Ref DomainName ] ]
           EnvironmentFiles:
             - Type: s3
               Value: !Sub 'arn:aws:s3:::{{resolve:ssm:/saas-boost/${Environment}/RESOURCES_BUCKET}}/tenants/${TenantId}/ServiceDiscovery.env'

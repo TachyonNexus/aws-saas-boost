@@ -369,6 +369,8 @@ Resources:
               - codepipeline:GetPipeline
               - codepipeline:GetPipelineState
               - codepipeline:UpdatePipeline
+              - codepipeline:TagResource
+              - codepipeline:UntagResource
             Resource:
               - !Sub arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:sb-${Environment}-tenant*
           - Effect: Allow
@@ -619,6 +621,15 @@ Resources:
               - ec2:RunInstances
             Resource:
               - '*'
+          # Elasticsearch onboarding delete policy
+          - Effect: Allow
+            Action:
+              - es:DeleteElasticsearchDomain
+              - es:DeleteElasticsearchServiceRole
+              - es:DescribeElasticsearchDomain
+              - es:RemoveTags
+            Resource:
+              - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/sb-${Environment}-tenant*
   OnboardingServiceDatabaseProvisionPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -770,6 +781,15 @@ Resources:
               - ds:DeleteDirectory
             Resource:
               - !Sub arn:aws:ds:${AWS::Region}:${AWS::AccountId}:directory/*
+          # Elasticsearch onboarding policy
+          - Effect: Allow
+            Action:
+              - es:AddTags
+              - es:CreateElasticsearchDomain
+              - es:DescribeElasticsearchDomain
+              - es:CreateElasticsearchServiceRole
+            Resource:
+              - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/sb-${Environment}-*
   OnboardingServiceExecutionRole:
     Type: AWS::IAM::Role
     Properties:
