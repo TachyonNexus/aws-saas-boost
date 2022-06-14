@@ -217,7 +217,7 @@ public class OnboardingStackListener implements RequestHandler<SNSEvent, Object>
                                                 "consoleUrl", AwsResource.LOAD_BALANCER.formatUrl(AWS_REGION, "sb-" + SAAS_BOOST_ENV + "-tenant-" + tenantId.split("-")[0]))
                                         );
                                     } else if ("AWS::ElasticLoadBalancingV2::Listener".equals(resourceType)) {
-                                        if ("HttpListener".equals(logicalId)) {
+                                        if ("HttpListener".equals(logicalId) || "RedirectToHttpsListener".equals(logicalId)) {
                                             LOGGER.info("Saving HTTP listener {} {}", logicalId, physicalResourceId);
                                             tenantResources.put(AwsResource.HTTP_LISTENER.name(), Map.of(
                                                     "name", physicalResourceId,
